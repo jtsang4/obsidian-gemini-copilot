@@ -11,15 +11,17 @@
 		}
 	},
 	"scripts": {
-		"dev": "node esbuild.config.mjs",
-		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"dev:build": "rslib build --watch",
+		"dev:copy": "node copy-dist-main.mjs",
+		"dev": "echo 'Run dev: two terminals -> pnpm dev:build and pnpm dev:copy' && exit 0",
+		"build": "tsc -noEmit -skipLibCheck && rslib build && node -e \"require('fs').cpSync('dist/main.js','main.js',{force:true})\"",
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
 		"postversion": "git push && git push --follow-tags",
 		"format": "biome format --write .",
 		"format-check": "biome format --check .",
 		"lint": "biome lint .",
 		"lint-fix": "biome lint --write .",
-		"check": "biome check .",
+		"check": "biome check --diagnostic-level=error .",
 		"check-fix": "biome check --write .",
 		"ci": "biome ci .",
 		"test": "jest"
@@ -30,11 +32,11 @@
 	"devDependencies": {
 		"@biomejs/biome": "2.3.4",
 		"@google/genai": "^1.29.0",
+		"@rslib/core": "^0.17.1",
 		"@types/jest": "^29.5.14",
 		"@types/node": "^16.18.126",
 		"builtin-modules": "3.3.0",
 		"codemirror-companion-extension": "^0.0.11",
-		"esbuild": "0.25.0",
 		"jest": "^29.7.0",
 		"jest-environment-jsdom": "^29.7.0",
 		"obsidian": "latest",

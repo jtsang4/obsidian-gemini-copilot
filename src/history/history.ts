@@ -1,4 +1,4 @@
-import { normalizePath, TFile, TAbstractFile } from 'obsidian'; // Added normalizePath
+import { normalizePath, type TAbstractFile, TFile } from 'obsidian'; // Added normalizePath
 import { SessionHistory } from '../agent/session-history';
 import type ObsidianGemini from '../main';
 import { type ChatSession, SessionType } from '../types/agent';

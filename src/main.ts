@@ -1,4 +1,4 @@
-import { type Editor, type MarkdownView, type MarkdownFileInfo, Notice, Plugin, type WorkspaceLeaf } from 'obsidian';
+import { type Editor, type MarkdownFileInfo, type MarkdownView, Notice, Plugin, type WorkspaceLeaf } from 'obsidian';
 // @ts-expect-error
 import agentsMemoryTemplateContent from '../prompts/agentsMemoryTemplate.hbs';
 import { SessionHistory } from './agent/session-history';
@@ -19,6 +19,9 @@ import { GeminiSummary } from './summary';
 import { ToolExecutionEngine } from './tools/execution-engine';
 import { ToolRegistry } from './tools/tool-registry';
 import { getVaultTools } from './tools/vault-tools';
+import { getWebTools } from './tools/web-tools';
+import { getMemoryTools } from './tools/memory-tool';
+import { getImageTools } from './tools/image-tools';
 import { AgentView, VIEW_TYPE_AGENT } from './ui/agent-view';
 import { MigrationModal } from './ui/migration-modal';
 import { RewriteInstructionsModal } from './ui/rewrite-modal';
@@ -238,24 +241,27 @@ export default class ObsidianGemini extends Plugin {
     }
 
     // Register web tools (Google Search and Web Fetch)
-    const { getWebTools } = await import('./tools/web-tools');
-    const webTools = getWebTools();
-    for (const tool of webTools) {
-      this.toolRegistry.registerTool(tool);
+    {
+      const webTools = getWebTools();
+      for (const tool of webTools) {
+        this.toolRegistry.registerTool(tool);
+      }
     }
 
     // Register memory tools
-    const { getMemoryTools } = await import('./tools/memory-tool');
-    const memoryTools = getMemoryTools();
-    for (const tool of memoryTools) {
-      this.toolRegistry.registerTool(tool);
+    {
+      const memoryTools = getMemoryTools();
+      for (const tool of memoryTools) {
+        this.toolRegistry.registerTool(tool);
+      }
     }
 
     // Register image generation tools
-    const { getImageTools } = await import('./tools/image-tools');
-    const imageTools = getImageTools();
-    for (const tool of imageTools) {
-      this.toolRegistry.registerTool(tool);
+    {
+      const imageTools = getImageTools();
+      for (const tool of imageTools) {
+        this.toolRegistry.registerTool(tool);
+      }
     }
 
     // Initialize completions

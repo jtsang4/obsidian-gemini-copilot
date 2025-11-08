@@ -111,7 +111,9 @@ export class HistoryMigrator {
           }
         } catch (error) {
           report.filesFailed++;
-          report.errors.push(`Failed to migrate ${file.path}: ${error instanceof Error ? error.message : String(error)}`);
+          report.errors.push(
+            `Failed to migrate ${file.path}: ${error instanceof Error ? error.message : String(error)}`
+          );
           console.error(`Migration error for ${file.path}:`, error);
         }
       }

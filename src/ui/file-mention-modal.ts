@@ -1,4 +1,4 @@
-import { FuzzySuggestModal, type App, type TAbstractFile, type TFile, TFolder } from 'obsidian';
+import { type App, FuzzySuggestModal, type TAbstractFile, type TFile, TFolder } from 'obsidian';
 import type ObsidianGemini from '../main';
 import { shouldExcludePathForPlugin } from '../utils/file-utils';
 

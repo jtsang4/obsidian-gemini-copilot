@@ -3,11 +3,11 @@ import type ObsidianGemini from '../main';
 import {
   type AgentContext,
   type ChatSession,
-  DestructiveAction,
   DEFAULT_CONTEXTS,
+  type DestructiveAction,
   type SessionModelConfig,
   SessionType,
-  ToolCategory,
+  type ToolCategory,
 } from '../types/agent';
 
 /**
@@ -313,8 +313,8 @@ export class SessionManager {
       contextFiles,
       enabledTools: (frontmatter.enabled_tools as ToolCategory[]) || DEFAULT_CONTEXTS.NOTE_CHAT.enabledTools,
       requireConfirmation: (frontmatter.require_confirmation as DestructiveAction[]) || [],
-      maxContextChars: (frontmatter.max_context_chars as number | undefined),
-      maxCharsPerFile: (frontmatter.max_chars_per_file as number | undefined),
+      maxContextChars: frontmatter.max_context_chars as number | undefined,
+      maxCharsPerFile: frontmatter.max_chars_per_file as number | undefined,
     };
   }
 

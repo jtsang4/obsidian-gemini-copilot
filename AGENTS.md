@@ -30,9 +30,9 @@ pnpm run format-check # Check formatting without changes
 
 ### Build System
 
-- Uses esbuild for fast bundling with TypeScript
-- Custom text file loader for `.txt` and `.hbs` templates
-- Source maps inline in dev, tree shaking in production
+- Uses rslib (Rsbuild/Rspack) for bundling TypeScript to a single-file CJS output
+- Text assets: `.txt` / `.hbs` loaded via `asset/source` so imports return raw strings
+- Source maps inline in dev, minified in production
 - Generated artifacts (`main.js`, `manifest.json`, `versions.json`) stay in the repo root for Obsidian
 
 ## Architecture

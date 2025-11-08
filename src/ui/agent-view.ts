@@ -13,6 +13,7 @@ import type { ExtendedModelRequest } from '../api/interfaces/model-api';
 import { GeminiClientFactory } from '../api/simple-factory';
 import type ObsidianGemini from '../main';
 import type { CustomPrompt } from '../prompts/types';
+import { toToolDefinitions } from '../tools/tool-converter';
 import type { ToolExecutionContext } from '../tools/types';
 import type { ChatSession } from '../types/agent';
 import type { GeminiConversationEntry } from '../types/conversation';
@@ -1159,8 +1160,9 @@ export class AgentView extends ItemView {
       });
 
       // Get conversation history
-      const conversationHistory = (await this.plugin.sessionHistory.getHistoryForSession(this.currentSession))
-        .filter(entry => entry.role !== 'system') as any[];
+      const conversationHistory = (await this.plugin.sessionHistory.getHistoryForSession(this.currentSession)).filter(
+        (entry) => entry.role !== 'system'
+      ) as any[];
 
       // Build context for AI request including mentioned files
       const contextInfo = await this.plugin.gfile.buildFileContext(
@@ -1212,7 +1214,6 @@ These files are included in the context below. When the user asks you to write d
         plugin: this.plugin,
         session: this.currentSession,
       };
-      const { toToolDefinitions } = await import('../tools/tool-converter');
       const tools = this.plugin.toolRegistry.getEnabledTools(toolContext);
       const availableTools = toToolDefinitions(tools);
       console.log('Available tools from registry:', availableTools);
@@ -1750,7 +1751,6 @@ User: ${history[0].message}`;
         plugin: this.plugin,
         session: this.currentSession,
       };
-      const { toToolDefinitions } = await import('../tools/tool-converter');
       const tools = this.plugin.toolRegistry.getEnabledTools(toolContext);
       const availableTools = toToolDefinitions(tools);
 

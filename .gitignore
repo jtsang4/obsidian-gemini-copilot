@@ -36,3 +36,5 @@ test-scripts/
 
 # TypeScript incremental compilation info
 *.tsbuildinfo
+
+/dist
