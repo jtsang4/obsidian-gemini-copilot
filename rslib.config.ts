@@ -58,11 +58,28 @@ export default defineConfig({
             runtimeChunk: false,
           };
           config.module = config.module || {};
+          // Global parser setting to avoid async chunks from dynamic import in all JS/TS (incl. node_modules)
+          config.module.parser = {
+            ...(config.module.parser || {}),
+            javascript: {
+              ...(config.module.parser?.javascript || {}),
+              dynamicImportMode: 'eager',
+            },
+          };
           config.module.rules = [
             ...(config.module.rules || []),
             {
               test: /\.(txt|hbs)$/,
               type: 'asset/source',
+            },
+            // Force all dynamic imports to be bundled eagerly into main.js
+            {
+              test: /\.[cm]?[jt]sx?$/,
+              parser: {
+                javascript: {
+                  dynamicImportMode: 'eager',
+                },
+              },
             },
           ];
           return config;
