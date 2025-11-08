@@ -34,6 +34,7 @@ export default defineConfig({
     {
       format: 'cjs',
       bundle: true,
+      autoExternal: false,
       autoExtension: false,
       output: {
         target: 'node',
