@@ -315,10 +315,10 @@ MIT License - see [LICENSE](LICENSE) for details.
 Contributions are welcome! See [CLAUDE.md](CLAUDE.md) for development guidelines and architecture details.
 
 ```bash
-npm install     # Install dependencies
-npm run dev     # Development build with watch
-npm run build   # Production build
-npm test        # Run tests
+pnpm install     # Install dependencies
+pnpm run dev     # Development build with watch
+pnpm run build   # Production build
+pnpm test        # Run tests
 ```
 
 ## Credits

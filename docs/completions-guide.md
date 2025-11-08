@@ -161,7 +161,7 @@ Suggestion: "about the importance of consistent documentation practices"
 ```
 Type: "To install the package, run"
 Pause...
-Suggestion: "`npm install package-name`"
+Suggestion: "`pnpm add package-name`"
 ```
 
 **Code Comments**

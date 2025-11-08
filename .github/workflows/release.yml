@@ -14,10 +14,14 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '18.x'
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
       - name: Install dependencies
-        run: npm install
+        run: pnpm install
       - name: Run tests
-        run: npm test
+        run: pnpm test
 
   build:
     needs: test
@@ -31,10 +35,15 @@ jobs:
         with:
           node-version: '18.x'
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
       - name: Build plugin
         run: |
-          npm install
-          npm run build
+          pnpm install
+          pnpm run build
 
       - name: Create release
         env:

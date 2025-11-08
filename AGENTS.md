@@ -15,17 +15,17 @@ Obsidian Gemini Scribe is an Obsidian plugin that integrates Google's Gemini AI 
 ### Development
 
 ```bash
-npm install          # Install dependencies
-npm run dev          # Development build with watch mode
-npm run build        # Production build (runs TypeScript check first)
-npm test             # Run Jest tests
-npm run format       # Format code with Prettier
-npm run format-check # Check formatting without changes
+pnpm install          # Install dependencies
+pnpm run dev          # Development build with watch mode
+pnpm run build        # Production build (runs TypeScript check first)
+pnpm test             # Run Jest tests
+pnpm run format       # Format code with Prettier
+pnpm run format-check # Check formatting without changes
 ```
 
 ### Testing
 
-- Run single test: `npm test -- path/to/test.ts`
+- Run single test: `pnpm test -- path/to/test.ts`
 - Manual integration: `node test-scripts/test-sdk-tools.mjs` (and siblings) validate agent toolchains before shipping
 
 ### Build System
@@ -103,7 +103,7 @@ The plugin uses a factory pattern for API creation with a retry decorator for re
 ## Coding Style & Naming Conventions
 
 - TypeScript-first codebase; group modules by domain and add barrel exports only when they simplify imports.
-- Format with Prettier (`npm run format`): 2-space indent, 120-column width, semicolons, single quotes, trailing commas.
+- Format with Prettier (`pnpm run format`): 2-space indent, 120-column width, semicolons, single quotes, trailing commas.
 - `.editorconfig` enforces LF endings and tabbed Markdown/config; avoid hand-editing generated bundles.
 - Use camelCase for variables/functions, PascalCase for classes/types, and kebab-case filenames aligned with their feature area.
 - Handle TypeScript errors properly - ensure all properties are correctly typed
@@ -117,7 +117,7 @@ The plugin uses a factory pattern for API creation with a retry decorator for re
 - Keep unit tests next to implementations and name them after the unit (`models.test.ts`, `main.test.ts`)
 - Assert observable behavior of prompts, services, and tool orchestration; add regression coverage for bugs
 - Extend shared fixtures under `__mocks__/` when mocking new APIs
-- Run `npm test` before each PR and execute relevant `test-scripts/*.mjs` after touching agent or tool code
+- Run `pnpm test` before each PR and execute relevant `test-scripts/*.mjs` after touching agent or tool code
 
 ### Testing Focus
 
@@ -162,7 +162,7 @@ This keeps technical planning centralized and accessible for all contributors.
 ## Commit & Pull Request Guidelines
 
 - Write concise, imperative commit subjects (`Fix agent session cleanup`, `Improve prompt builder`); reference issues/PRs with `#123`
-- Commit generated artifacts (`main.js`, `manifest.json`, `versions.json`) alongside source changes; use `npm run version` for releases
+- Commit generated artifacts (`main.js`, `manifest.json`, `versions.json`) alongside source changes; use `pnpm run version` for releases
 - PRs should explain motivation, highlight user-visible impact, list automated/manual tests, and attach screenshots or vault clips for UI tweaks
 - Flag reviewers who own the affected area and mention required follow-up or rollout notes
 
