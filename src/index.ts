@@ -83,6 +83,7 @@ export type {
   ParameterRanges,
 } from './services/parameter-validation';
 export { ToolExecutionEngine } from './tools/execution-engine';
+export { GeminiFileSearchTool, getGeminiFileSearchTool } from './tools/gemini-file-search';
 // Web Tools
 export { GoogleSearchTool } from './tools/google-search-tool';
 // Tool Loop Detection
@@ -106,7 +107,6 @@ export {
   ListFilesTool,
   MoveFileTool,
   ReadFileTool,
-  SearchFilesTool,
   WriteFileTool,
 } from './tools/vault-tools';
 export { WebFetchTool } from './tools/web-fetch-tool';

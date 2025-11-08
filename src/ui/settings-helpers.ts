@@ -3,15 +3,14 @@ import type ObsidianGemini from '../main';
 import type { ObsidianGeminiSettings } from '../main';
 import { GEMINI_MODELS } from '../models';
 
+type StringKeys<T> = {
+  [K in keyof T]-?: Exclude<T[K], undefined> extends string ? K : never;
+}[keyof T];
+
 export async function selectModelSetting(
   containerEl: HTMLElement,
   plugin: InstanceType<typeof ObsidianGemini>,
-  settingName: keyof Pick<
-    ObsidianGeminiSettings,
-    {
-      [K in keyof ObsidianGeminiSettings]: ObsidianGeminiSettings[K] extends string ? K : never;
-    }[keyof ObsidianGeminiSettings]
-  >,
+  settingName: StringKeys<ObsidianGeminiSettings>,
   label: string,
   description: string
 ) {
@@ -30,7 +29,10 @@ export async function selectModelSetting(
         dropdown.addOption(model.value, model.label);
       });
 
-      dropdown.setValue(String((plugin.settings as ObsidianGeminiSettings)[settingName])).onChange(async (value) => {
+      const current = (plugin.settings as ObsidianGeminiSettings)[
+        settingName
+      ] as unknown as string | undefined;
+      dropdown.setValue(current ?? '').onChange(async (value) => {
         (plugin.settings as ObsidianGeminiSettings)[settingName] = value as string;
         await plugin.saveSettings();
       });

@@ -1,4 +1,5 @@
 import { type App, Notice, PluginSettingTab, Setting } from 'obsidian';
+import type { FileSearchSettings } from '../services/file-search-store';
 import type ObsidianGemini from '../main';
 import { HistoryMigrator } from '../migrations/history-migrator';
 import { FolderSuggest } from './folder-suggest';
@@ -270,6 +271,230 @@ export default class ObsidianGeminiSettingTab extends PluginSettingTab {
         });
         text.setValue(this.plugin.settings.historyFolder);
       });
+
+    // File Search (Gemini)
+    new Setting(containerEl).setName('File Search (Gemini)').setHeading();
+
+    // Enable File Search
+    new Setting(containerEl)
+      .setName('Enable File Search')
+      .setDesc('Enable syncing selected folders to Gemini File Search for semantic search in the vault tools.')
+      .addToggle((toggle) =>
+        toggle.setValue(this.plugin.settings.fileSearch?.enabled ?? false).onChange(async (value) => {
+          this.plugin.settings.fileSearch = {
+            ...(this.plugin.settings.fileSearch || {
+              includeDirs: [],
+              excludeDirs: ['.obsidian', this.plugin.settings.historyFolder],
+              excludeGlobs: [],
+              chunking: { maxTokensPerChunk: 400, maxOverlapTokens: 60 },
+              maxConcurrentUploads: 3,
+              debounceMs: 8000,
+              files: {},
+              lastFullScan: 0,
+            }),
+            enabled: value,
+          } as FileSearchSettings;
+          await this.plugin.saveSettings();
+          this.display();
+        })
+      );
+
+    if (this.plugin.settings.fileSearch?.enabled) {
+      // Include directories (comma or newline separated)
+      new Setting(containerEl)
+        .setName('Include directories')
+        .setDesc('Only files under these folders will be synced. Leave empty to include all (except excluded).')
+        .addTextArea((t) => {
+          const val = (this.plugin.settings.fileSearch?.includeDirs || []).join('\n');
+          t.setPlaceholder('e.g. Notes\nWork')
+            .setValue(val)
+            .onChange(async (v) => {
+              const list = v
+                .split(/[\n,]/)
+                .map((s) => s.trim())
+                .filter(Boolean);
+              if (this.plugin.settings.fileSearch) {
+                this.plugin.settings.fileSearch.includeDirs = list;
+                await this.plugin.saveSettings();
+              }
+            });
+          t.inputEl.rows = 3;
+        });
+
+      // Exclude directories
+      new Setting(containerEl)
+        .setName('Exclude directories')
+        .setDesc('Folders to never sync (system folders are always protected).')
+        .addTextArea((t) => {
+          const val = (this.plugin.settings.fileSearch?.excludeDirs || []).join('\n');
+          t.setPlaceholder('.obsidian\n' + this.plugin.settings.historyFolder)
+            .setValue(val)
+            .onChange(async (v) => {
+              const list = v
+                .split(/[\n,]/)
+                .map((s) => s.trim())
+                .filter(Boolean);
+              if (this.plugin.settings.fileSearch) {
+                this.plugin.settings.fileSearch.excludeDirs = list;
+                await this.plugin.saveSettings();
+              }
+            });
+          t.inputEl.rows = 3;
+        });
+
+      // Exclude globs
+      new Setting(containerEl)
+        .setName('Exclude globs')
+        .setDesc('Optional glob patterns to exclude (one per line).')
+        .addTextArea((t) => {
+          const val = (this.plugin.settings.fileSearch?.excludeGlobs || []).join('\n');
+          t.setPlaceholder('**/Templates/**')
+            .setValue(val)
+            .onChange(async (v) => {
+              const list = v
+                .split(/[\n,]/)
+                .map((s) => s.trim())
+                .filter(Boolean);
+              if (this.plugin.settings.fileSearch) {
+                this.plugin.settings.fileSearch.excludeGlobs = list;
+                await this.plugin.saveSettings();
+              }
+            });
+          t.inputEl.rows = 3;
+        });
+
+      // Chunking config
+      new Setting(containerEl)
+        .setName('Chunking: max tokens per chunk')
+        .addText((text) => {
+          text
+            .setPlaceholder('400')
+            .setValue(String(this.plugin.settings.fileSearch?.chunking.maxTokensPerChunk ?? 400))
+            .onChange(async (v) => {
+              const n = parseInt(v || '400', 10);
+              if (this.plugin.settings.fileSearch) {
+                this.plugin.settings.fileSearch.chunking.maxTokensPerChunk = Number.isNaN(n) ? 400 : n;
+                await this.plugin.saveSettings();
+              }
+            });
+        });
+
+      new Setting(containerEl)
+        .setName('Chunking: max overlap tokens')
+        .addText((text) => {
+          text
+            .setPlaceholder('60')
+            .setValue(String(this.plugin.settings.fileSearch?.chunking.maxOverlapTokens ?? 60))
+            .onChange(async (v) => {
+              const n = parseInt(v || '60', 10);
+              if (this.plugin.settings.fileSearch) {
+                this.plugin.settings.fileSearch.chunking.maxOverlapTokens = Number.isNaN(n) ? 60 : n;
+                await this.plugin.saveSettings();
+              }
+            });
+        });
+
+      // Concurrency & debounce
+      new Setting(containerEl)
+        .setName('Max concurrent uploads')
+        .addText((text) => {
+          text
+            .setPlaceholder('3')
+            .setValue(String(this.plugin.settings.fileSearch?.maxConcurrentUploads ?? 3))
+            .onChange(async (v) => {
+              const n = parseInt(v || '3', 10);
+              if (this.plugin.settings.fileSearch) {
+                this.plugin.settings.fileSearch.maxConcurrentUploads = Number.isNaN(n) ? 3 : n;
+                await this.plugin.saveSettings();
+              }
+            });
+        });
+
+      new Setting(containerEl)
+        .setName('Debounce (ms)')
+        .setDesc('Delay before syncing after rapid changes')
+        .addText((text) => {
+          text
+            .setPlaceholder('8000')
+            .setValue(String(this.plugin.settings.fileSearch?.debounceMs ?? 8000))
+            .onChange(async (v) => {
+              const n = parseInt(v || '8000', 10);
+              if (this.plugin.settings.fileSearch) {
+                this.plugin.settings.fileSearch.debounceMs = Number.isNaN(n) ? 8000 : n;
+                await this.plugin.saveSettings();
+              }
+            });
+        });
+
+      // Status + controls
+      const fs = this.plugin.settings.fileSearch as FileSearchSettings;
+      const tracked = Object.keys(fs?.files || {}).length;
+      const lastScan = fs?.lastFullScan ? new Date(fs.lastFullScan).toLocaleString() : 'Never';
+
+      const statusSetting = new Setting(containerEl)
+        .setName('File Search status')
+        .setDesc(
+          `Store: ${fs?.storeDisplayName || '(not created)'}${
+            fs?.storeName ? `\nName: ${fs.storeName}` : ''
+          }\nTracked files: ${tracked}\nLast full scan: ${lastScan}`
+        );
+
+      // Rescan all
+      statusSetting.addButton((button) =>
+        button
+          .setButtonText('Rescan now')
+          .setTooltip('Ensure store is initialized and rescan all eligible markdown files')
+          .onClick(async () => {
+            try {
+              button.setDisabled(true);
+              button.setButtonText('Rescanning...');
+              await this.plugin.fileSearchStore.ensureInitialized();
+              await this.plugin.fileSearchStore.initialScanAndSync();
+              button.setButtonText('✓ Rescanned');
+              new Notice('File Search: full rescan completed.');
+            } catch (e) {
+              button.setButtonText('✗ Failed');
+              new Notice(`Rescan failed: ${e instanceof Error ? e.message : String(e)}`);
+            } finally {
+              setTimeout(() => {
+                button.setDisabled(false);
+                button.setButtonText('Rescan now');
+                this.display();
+              }, 1500);
+            }
+          })
+      );
+
+      // Force re-upload current file
+      statusSetting.addButton((button) =>
+        button
+          .setButtonText('Force re-upload active file')
+          .setTooltip('Force upload the currently active markdown file to the File Search store')
+          .onClick(async () => {
+            const active = this.app.workspace.getActiveFile();
+            if (!active || active.extension !== 'md') {
+              new Notice('No active markdown file.');
+              return;
+            }
+            try {
+              button.setDisabled(true);
+              button.setButtonText('Uploading...');
+              await this.plugin.fileSearchStore.syncOne(active, true);
+              button.setButtonText('✓ Uploaded');
+              new Notice(`Re-uploaded: ${active.path}`);
+            } catch (e) {
+              button.setButtonText('✗ Failed');
+              new Notice(`Upload failed: ${e instanceof Error ? e.message : String(e)}`);
+            } finally {
+              setTimeout(() => {
+                button.setDisabled(false);
+                button.setButtonText('Force re-upload active file');
+                this.display();
+              }, 1500);
+            }
+          })
+      );
+    }
 
     // Chat History
     new Setting(containerEl).setName('Chat History').setHeading();

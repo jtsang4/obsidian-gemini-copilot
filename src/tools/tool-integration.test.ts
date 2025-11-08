@@ -3,7 +3,7 @@ import { SessionType, ToolCategory } from '../types/agent';
 import { ToolExecutionEngine } from './execution-engine';
 import { GoogleSearchTool } from './google-search-tool';
 import { ToolRegistry } from './tool-registry';
-import { DeleteFileTool, ListFilesTool, ReadFileTool, SearchFilesTool, WriteFileTool } from './vault-tools';
+import { DeleteFileTool, ListFilesTool, ReadFileTool, WriteFileTool } from './vault-tools';
 import { WebFetchTool } from './web-fetch-tool';
 
 // Mock dependencies
@@ -80,7 +80,6 @@ describe('Tool Integration Tests', () => {
     registry = new ToolRegistry(plugin);
     registry.registerTool(new ReadFileTool());
     registry.registerTool(new WriteFileTool());
-    registry.registerTool(new SearchFilesTool());
     registry.registerTool(new ListFilesTool());
     registry.registerTool(new DeleteFileTool());
     registry.registerTool(new GoogleSearchTool());
@@ -377,7 +376,7 @@ describe('Tool Integration Tests', () => {
 
       // Execute multiple tools with one failure
       const toolCalls = [
-        { name: 'search_files', arguments: { pattern: 'test' } },
+        { name: 'list_files', arguments: { path: '' } },
         { name: 'read_file', arguments: { path: 'nonexistent.md' } }, // Will fail
         { name: 'list_files', arguments: { path: '' } },
       ];
@@ -396,7 +395,7 @@ describe('Tool Integration Tests', () => {
       }
 
       expect(results).toHaveLength(3);
-      expect(results[0].success).toBe(true); // Search should succeed
+      expect(results[0].success).toBe(true); // List should succeed
       expect(results[1].success).toBe(false); // Read should fail
       expect(results[2].success).toBe(true); // List should succeed
     });

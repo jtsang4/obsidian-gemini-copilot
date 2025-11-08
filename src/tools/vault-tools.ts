@@ -618,102 +618,6 @@ export class MoveFileTool implements Tool {
   }
 }
 
-/**
- * Search for files by name pattern
- */
-export class SearchFilesTool implements Tool {
-  name = 'search_files';
-  displayName = 'Search Files';
-  category = ToolCategory.READ_ONLY;
-  description =
-    'Search for files in the vault by matching file names or paths against a pattern. Supports wildcards: * (matches any characters) and ? (matches single character). Searches are case-insensitive and match against both file names and full paths. Returns array of matching files with name, path, size, and modification time. Examples: "daily*" finds all files starting with "daily", "*meeting*" finds files containing "meeting" anywhere in name/path. Limited to 50 results by default. NOTE: This searches file NAMES/PATHS only, not file contents.';
-
-  parameters = {
-    type: 'object' as const,
-    properties: {
-      pattern: {
-        type: 'string' as const,
-        description: 'Search pattern (supports wildcards: * matches any characters, ? matches single character)',
-      },
-      limit: {
-        type: 'number' as const,
-        description: 'Maximum number of results to return',
-      },
-    },
-    required: ['pattern'],
-  };
-
-  async execute(params: { pattern: string; limit?: number }, context: ToolExecutionContext): Promise<ToolResult> {
-    const plugin = context.plugin as InstanceType<typeof ObsidianGemini>;
-
-    try {
-      const allFiles = plugin.app.vault.getMarkdownFiles();
-      const limit = params.limit || 50;
-
-      // Check if pattern contains wildcards
-      const hasWildcards = params.pattern.includes('*') || params.pattern.includes('?');
-
-      let regex: RegExp;
-      if (hasWildcards) {
-        // Convert wildcard pattern to regex
-        // Escape special regex characters except * and ?
-        let regexPattern = params.pattern
-          .replace(/[.+^${}()|[\]\\]/g, '\\$&') // Escape special regex chars
-          .replace(/\*/g, '.*') // * matches any characters
-          .replace(/\?/g, '.'); // ? matches single character
-
-        // Add anchors if pattern doesn't start/end with wildcards
-        // This makes patterns like 'Test*' match only files starting with Test
-        if (!params.pattern.startsWith('*') && !params.pattern.startsWith('?')) {
-          regexPattern = `^${regexPattern}`;
-        }
-        if (!params.pattern.endsWith('*') && !params.pattern.endsWith('?')) {
-          regexPattern = `${regexPattern}$`;
-        }
-
-        // Create case-insensitive regex
-        regex = new RegExp(regexPattern, 'i');
-      } else {
-        // For non-wildcard patterns, do simple substring matching
-        // Escape the pattern for use in regex
-        const escapedPattern = params.pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        regex = new RegExp(escapedPattern, 'i');
-      }
-
-      const matchingFiles = allFiles
-        .filter((file) => {
-          // Exclude system folders
-          if (shouldExcludePath(file.path, plugin)) {
-            return false;
-          }
-          // Test against both file name and full path
-          return regex.test(file.name) || regex.test(file.path);
-        })
-        .slice(0, limit)
-        .map((file) => ({
-          name: file.name,
-          path: file.path,
-          size: file.stat.size,
-          modified: file.stat.mtime,
-        }));
-
-      return {
-        success: true,
-        data: {
-          pattern: params.pattern,
-          matches: matchingFiles,
-          count: matchingFiles.length,
-          truncated: allFiles.filter((f) => regex.test(f.name) || regex.test(f.path)).length > limit,
-        },
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: `Error searching files: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      };
-    }
-  }
-}
 
 /**
  * Get the currently active file in the editor
@@ -786,7 +690,6 @@ export function getVaultTools(): Tool[] {
     new CreateFolderTool(),
     new DeleteFileTool(),
     new MoveFileTool(),
-    new SearchFilesTool(),
     new GetActiveFileTool(),
   ];
 }

@@ -13,15 +13,17 @@ import { GeminiPrompts } from './prompts';
 import { PromptManager } from './prompts/prompt-manager';
 import { SelectionRewriter } from './rewrite-selection';
 import { AgentsMemory } from './services/agents-memory';
+import { type FileSearchSettings, FileSearchStoreService } from './services/file-search-store';
 import { ModelManager } from './services/model-manager';
 import { VaultAnalyzer } from './services/vault-analyzer';
 import { GeminiSummary } from './summary';
 import { ToolExecutionEngine } from './tools/execution-engine';
+import { getGeminiFileSearchTool } from './tools/gemini-file-search';
+import { getImageTools } from './tools/image-tools';
+import { getMemoryTools } from './tools/memory-tool';
 import { ToolRegistry } from './tools/tool-registry';
 import { getVaultTools } from './tools/vault-tools';
 import { getWebTools } from './tools/web-tools';
-import { getMemoryTools } from './tools/memory-tool';
-import { getImageTools } from './tools/image-tools';
 import { AgentView, VIEW_TYPE_AGENT } from './ui/agent-view';
 import { MigrationModal } from './ui/migration-modal';
 import { RewriteInstructionsModal } from './ui/rewrite-modal';
@@ -56,6 +58,8 @@ export interface ObsidianGeminiSettings {
   loopDetectionEnabled: boolean;
   loopDetectionThreshold: number;
   loopDetectionTimeWindowSeconds: number;
+  // Gemini File Search integration
+  fileSearch?: FileSearchSettings;
 }
 
 const DEFAULT_SETTINGS: ObsidianGeminiSettings = {
@@ -85,6 +89,20 @@ const DEFAULT_SETTINGS: ObsidianGeminiSettings = {
   loopDetectionEnabled: true,
   loopDetectionThreshold: 3,
   loopDetectionTimeWindowSeconds: 30,
+  // Default File Search settings (disabled by default)
+  fileSearch: {
+    enabled: false,
+    storeName: undefined,
+    storeDisplayName: undefined,
+    includeDirs: [],
+    excludeDirs: ['.obsidian', 'gemini-scribe'],
+    excludeGlobs: [],
+    chunking: { maxTokensPerChunk: 400, maxOverlapTokens: 60 },
+    maxConcurrentUploads: 3,
+    debounceMs: 8000,
+    files: {},
+    lastFullScan: 0,
+  },
 };
 
 export default class ObsidianGemini extends Plugin {
@@ -104,6 +122,7 @@ export default class ObsidianGemini extends Plugin {
   public agentsMemory!: AgentsMemory;
   public vaultAnalyzer!: VaultAnalyzer;
   public imageGeneration!: ImageGeneration;
+  public fileSearchStore!: FileSearchStoreService;
 
   // Private members
   private summarizer!: GeminiSummary;
@@ -136,7 +155,7 @@ export default class ObsidianGemini extends Plugin {
     this.addCommand({
       id: 'gemini-scribe-rewrite-selection',
       name: 'Rewrite text with AI',
-      editorCallback: (editor: Editor, ctx: MarkdownFileInfo | MarkdownView) => {
+      editorCallback: (editor: Editor, _ctx: MarkdownFileInfo | MarkdownView) => {
         const selection = editor.getSelection();
         const hasSelection = selection.length > 0;
 
@@ -190,7 +209,13 @@ export default class ObsidianGemini extends Plugin {
 
     this.addSettingTab(new ObsidianGeminiSettingTab(this.app, this));
 
-    this.app.workspace.onLayoutReady(() => this.onLayoutReady());
+    this.app.workspace.onLayoutReady(() => {
+      this.onLayoutReady();
+      // Start file search store sync lifecycle when layout is ready
+      if (this.fileSearchStore) {
+        this.fileSearchStore.onLayoutReady();
+      }
+    });
   }
 
   async setupGeminiScribe() {
@@ -264,6 +289,12 @@ export default class ObsidianGemini extends Plugin {
       }
     }
 
+    // Register Gemini File Search tool (read-only, optional)
+    {
+      const geminiFileSearchTool = getGeminiFileSearchTool();
+      this.toolRegistry.registerTool(geminiFileSearchTool);
+    }
+
     // Initialize completions
     this.completions = new GeminiCompletions(this);
     await this.completions.setupCompletions();
@@ -280,6 +311,12 @@ export default class ObsidianGemini extends Plugin {
     // Initialize image generation
     this.imageGeneration = new ImageGeneration(this);
     await this.imageGeneration.setupImageGenerationCommand();
+
+    // Initialize File Search Store service
+    this.fileSearchStore = new FileSearchStoreService(this);
+    if (this.app.workspace.layoutReady) {
+      this.fileSearchStore.onLayoutReady();
+    }
   }
 
   async activateAgentView() {
