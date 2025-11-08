@@ -19,7 +19,7 @@ pnpm install          # Install dependencies
 pnpm run dev          # Development build with watch mode
 pnpm run build        # Production build (runs TypeScript check first)
 pnpm test             # Run Jest tests
-pnpm run format       # Format code with Prettier
+pnpm run format       # Format code with Biome
 pnpm run format-check # Check formatting without changes
 ```
 
@@ -103,11 +103,18 @@ The plugin uses a factory pattern for API creation with a retry decorator for re
 ## Coding Style & Naming Conventions
 
 - TypeScript-first codebase; group modules by domain and add barrel exports only when they simplify imports.
-- Format with Prettier (`pnpm run format`): 2-space indent, 120-column width, semicolons, single quotes, trailing commas.
+- Format with Biome (`pnpm run format`): 2-space indent, 120-column width, semicolons, single quotes, trailing commas.
 - `.editorconfig` enforces LF endings and tabbed Markdown/config; avoid hand-editing generated bundles.
 - Use camelCase for variables/functions, PascalCase for classes/types, and kebab-case filenames aligned with their feature area.
 - Handle TypeScript errors properly - ensure all properties are correctly typed
 - Use proper async/await patterns for all asynchronous operations
+- **Avoid `any` type**: Do not use `any` type unless absolutely necessary (e.g., working with untyped third-party libraries). Prefer explicit type definitions, unions, or generics to maintain type safety and improve code maintainability
+
+### Modern JavaScript Practices
+
+- **Use static methods over prototype methods**: Prefer `Object.hasOwn(obj, prop)` over `hasOwnProperty()`, and `arr.toSorted()`/`arr.toReversed()`/`arr.toSpliced()` over mutating array methods when immutability is preferred
+- **Modern array access**: Use `arr.at(-1)` and `str.at(-1)` for negative index access (ES2022)
+- **Rationale**: Static methods are safer from prototype pollution and provide more predictable behavior
 
 ## Testing Guidelines
 

@@ -1,243 +1,243 @@
-import { ToolRegistry } from './tool-registry';
-import { Tool, ToolResult, ToolExecutionContext } from './types';
 import { ToolCategory } from '../types/agent';
+import { ToolRegistry } from './tool-registry';
+import type { Tool, ToolExecutionContext, ToolResult } from './types';
 
 // Mock plugin
 const mockPlugin = {
-	app: {
-		vault: {},
-		workspace: {},
-		metadataCache: {}
-	}
+  app: {
+    vault: {},
+    workspace: {},
+    metadataCache: {},
+  },
 } as any;
 
 // Create a test tool
 class TestTool implements Tool {
-	name = 'test_tool';
-	category = ToolCategory.READ_ONLY;
-	description = 'A test tool';
-	
-	parameters = {
-		type: 'object' as const,
-		properties: {
-			message: {
-				type: 'string' as const,
-				description: 'A test message'
-			}
-		},
-		required: ['message']
-	};
+  name = 'test_tool';
+  category = ToolCategory.READ_ONLY;
+  description = 'A test tool';
 
-	async execute(params: { message: string }, context: ToolExecutionContext): Promise<ToolResult> {
-		return {
-			success: true,
-			data: { response: `Hello, ${params.message}!` }
-		};
-	}
+  parameters = {
+    type: 'object' as const,
+    properties: {
+      message: {
+        type: 'string' as const,
+        description: 'A test message',
+      },
+    },
+    required: ['message'],
+  };
+
+  async execute(params: { message: string }, _context: ToolExecutionContext): Promise<ToolResult> {
+    return {
+      success: true,
+      data: { response: `Hello, ${params.message}!` },
+    };
+  }
 }
 
 class DestructiveTestTool implements Tool {
-	name = 'destructive_tool';
-	category = ToolCategory.VAULT_OPERATIONS;
-	description = 'A destructive test tool';
-	requiresConfirmation = true;
-	
-	parameters = {
-		type: 'object' as const,
-		properties: {
-			action: {
-				type: 'string' as const,
-				description: 'The action to perform'
-			}
-		},
-		required: ['action']
-	};
+  name = 'destructive_tool';
+  category = ToolCategory.VAULT_OPERATIONS;
+  description = 'A destructive test tool';
+  requiresConfirmation = true;
 
-	async execute(params: { action: string }, context: ToolExecutionContext): Promise<ToolResult> {
-		return {
-			success: true,
-			data: { performed: params.action }
-		};
-	}
+  parameters = {
+    type: 'object' as const,
+    properties: {
+      action: {
+        type: 'string' as const,
+        description: 'The action to perform',
+      },
+    },
+    required: ['action'],
+  };
+
+  async execute(params: { action: string }, _context: ToolExecutionContext): Promise<ToolResult> {
+    return {
+      success: true,
+      data: { performed: params.action },
+    };
+  }
 }
 
 describe('ToolRegistry', () => {
-	let registry: ToolRegistry;
+  let registry: ToolRegistry;
 
-	beforeEach(() => {
-		registry = new ToolRegistry(mockPlugin);
-	});
+  beforeEach(() => {
+    registry = new ToolRegistry(mockPlugin);
+  });
 
-	describe('registerTool', () => {
-		it('should register a tool successfully', () => {
-			const tool = new TestTool();
-			registry.registerTool(tool);
-			
-			expect(registry.getTool('test_tool')).toBe(tool);
-		});
+  describe('registerTool', () => {
+    it('should register a tool successfully', () => {
+      const tool = new TestTool();
+      registry.registerTool(tool);
 
-		it('should warn when registering duplicate tool', () => {
-			const tool1 = new TestTool();
-			const tool2 = new TestTool();
-			const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
-			
-			registry.registerTool(tool1);
-			registry.registerTool(tool2);
-			
-			expect(consoleSpy).toHaveBeenCalledWith('Tool test_tool is already registered, overwriting...');
-			consoleSpy.mockRestore();
-		});
-	});
+      expect(registry.getTool('test_tool')).toBe(tool);
+    });
 
-	describe('getTool', () => {
-		it('should return undefined for non-existent tool', () => {
-			expect(registry.getTool('non_existent')).toBeUndefined();
-		});
+    it('should warn when registering duplicate tool', () => {
+      const tool1 = new TestTool();
+      const tool2 = new TestTool();
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
 
-		it('should return registered tool', () => {
-			const tool = new TestTool();
-			registry.registerTool(tool);
-			
-			expect(registry.getTool('test_tool')).toBe(tool);
-		});
-	});
+      registry.registerTool(tool1);
+      registry.registerTool(tool2);
 
-	describe('getToolsByCategory', () => {
-		it('should return tools by category', () => {
-			const readOnlyTool = new TestTool();
-			const vaultTool = new DestructiveTestTool();
-			
-			registry.registerTool(readOnlyTool);
-			registry.registerTool(vaultTool);
-			
-			const readOnlyTools = registry.getToolsByCategory(ToolCategory.READ_ONLY);
-			const vaultTools = registry.getToolsByCategory(ToolCategory.VAULT_OPERATIONS);
-			
-			expect(readOnlyTools).toHaveLength(1);
-			expect(readOnlyTools[0]).toBe(readOnlyTool);
-			expect(vaultTools).toHaveLength(1);
-			expect(vaultTools[0]).toBe(vaultTool);
-		});
+      expect(consoleSpy).toHaveBeenCalledWith('Tool test_tool is already registered, overwriting...');
+      consoleSpy.mockRestore();
+    });
+  });
 
-		it('should return empty array for category with no tools', () => {
-			const tools = registry.getToolsByCategory(ToolCategory.EXTERNAL_MCP);
-			expect(tools).toHaveLength(0);
-		});
-	});
+  describe('getTool', () => {
+    it('should return undefined for non-existent tool', () => {
+      expect(registry.getTool('non_existent')).toBeUndefined();
+    });
 
-	describe('validateParameters', () => {
-		beforeEach(() => {
-			registry.registerTool(new TestTool());
-		});
+    it('should return registered tool', () => {
+      const tool = new TestTool();
+      registry.registerTool(tool);
 
-		it('should validate correct parameters', () => {
-			const result = registry.validateParameters('test_tool', { message: 'hello' });
-			expect(result.valid).toBe(true);
-			expect(result.errors).toBeUndefined();
-		});
+      expect(registry.getTool('test_tool')).toBe(tool);
+    });
+  });
 
-		it('should reject missing required parameters', () => {
-			const result = registry.validateParameters('test_tool', {});
-			expect(result.valid).toBe(false);
-			expect(result.errors).toContain('Missing required parameter: message');
-		});
+  describe('getToolsByCategory', () => {
+    it('should return tools by category', () => {
+      const readOnlyTool = new TestTool();
+      const vaultTool = new DestructiveTestTool();
 
-		it('should reject invalid parameter types', () => {
-			const result = registry.validateParameters('test_tool', { message: 123 });
-			expect(result.valid).toBe(false);
-			expect(result.errors).toContain('Parameter message should be string but got number');
-		});
+      registry.registerTool(readOnlyTool);
+      registry.registerTool(vaultTool);
 
-		it('should return invalid for non-existent tool', () => {
-			const result = registry.validateParameters('non_existent', { message: 'hello' });
-			expect(result.valid).toBe(false);
-			expect(result.errors).toContain('Tool non_existent not found');
-		});
-	});
+      const readOnlyTools = registry.getToolsByCategory(ToolCategory.READ_ONLY);
+      const vaultTools = registry.getToolsByCategory(ToolCategory.VAULT_OPERATIONS);
 
-	describe('getEnabledTools', () => {
-		it('should return tools enabled for context', () => {
-			const readOnlyTool = new TestTool();
-			const vaultTool = new DestructiveTestTool();
-			
-			registry.registerTool(readOnlyTool);
-			registry.registerTool(vaultTool);
+      expect(readOnlyTools).toHaveLength(1);
+      expect(readOnlyTools[0]).toBe(readOnlyTool);
+      expect(vaultTools).toHaveLength(1);
+      expect(vaultTools[0]).toBe(vaultTool);
+    });
 
-			const context = {
-				session: {
-					context: {
-						enabledTools: [ToolCategory.READ_ONLY]
-					}
-				}
-			} as any;
+    it('should return empty array for category with no tools', () => {
+      const tools = registry.getToolsByCategory(ToolCategory.EXTERNAL_MCP);
+      expect(tools).toHaveLength(0);
+    });
+  });
 
-			const enabledTools = registry.getEnabledTools(context);
-			expect(enabledTools).toHaveLength(1);
-			expect(enabledTools[0]).toBe(readOnlyTool);
-		});
+  describe('validateParameters', () => {
+    beforeEach(() => {
+      registry.registerTool(new TestTool());
+    });
 
-		it('should return empty array when no tools enabled', () => {
-			const context = {
-				session: {
-					context: {
-						enabledTools: []
-					}
-				}
-			} as any;
+    it('should validate correct parameters', () => {
+      const result = registry.validateParameters('test_tool', { message: 'hello' });
+      expect(result.valid).toBe(true);
+      expect(result.errors).toBeUndefined();
+    });
 
-			const enabledTools = registry.getEnabledTools(context);
-			expect(enabledTools).toHaveLength(0);
-		});
-	});
+    it('should reject missing required parameters', () => {
+      const result = registry.validateParameters('test_tool', {});
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain('Missing required parameter: message');
+    });
 
-	describe('requiresConfirmation', () => {
-		beforeEach(() => {
-			registry.registerTool(new TestTool());
-			registry.registerTool(new DestructiveTestTool());
-		});
+    it('should reject invalid parameter types', () => {
+      const result = registry.validateParameters('test_tool', { message: 123 });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain('Parameter message should be string but got number');
+    });
 
-		it('should return false for non-destructive tool', () => {
-			const context = {
-				session: {
-					context: {
-						requireConfirmation: []
-					}
-				}
-			} as any;
+    it('should return invalid for non-existent tool', () => {
+      const result = registry.validateParameters('non_existent', { message: 'hello' });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain('Tool non_existent not found');
+    });
+  });
 
-			expect(registry.requiresConfirmation('test_tool', context)).toBe(false);
-		});
+  describe('getEnabledTools', () => {
+    it('should return tools enabled for context', () => {
+      const readOnlyTool = new TestTool();
+      const vaultTool = new DestructiveTestTool();
 
-		it('should return true for destructive tool', () => {
-			const context = {
-				session: {
-					context: {
-						requireConfirmation: []
-					}
-				}
-			} as any;
+      registry.registerTool(readOnlyTool);
+      registry.registerTool(vaultTool);
 
-			expect(registry.requiresConfirmation('destructive_tool', context)).toBe(true);
-		});
-	});
+      const context = {
+        session: {
+          context: {
+            enabledTools: [ToolCategory.READ_ONLY],
+          },
+        },
+      } as any;
 
-	describe('getAllTools', () => {
-		it('should return all registered tools', () => {
-			const tool1 = new TestTool();
-			const tool2 = new DestructiveTestTool();
-			
-			registry.registerTool(tool1);
-			registry.registerTool(tool2);
+      const enabledTools = registry.getEnabledTools(context);
+      expect(enabledTools).toHaveLength(1);
+      expect(enabledTools[0]).toBe(readOnlyTool);
+    });
 
-			const allTools = registry.getAllTools();
-			expect(allTools).toHaveLength(2);
-			expect(allTools).toContain(tool1);
-			expect(allTools).toContain(tool2);
-		});
+    it('should return empty array when no tools enabled', () => {
+      const context = {
+        session: {
+          context: {
+            enabledTools: [],
+          },
+        },
+      } as any;
 
-		it('should return empty array when no tools registered', () => {
-			const allTools = registry.getAllTools();
-			expect(allTools).toHaveLength(0);
-		});
-	});
+      const enabledTools = registry.getEnabledTools(context);
+      expect(enabledTools).toHaveLength(0);
+    });
+  });
+
+  describe('requiresConfirmation', () => {
+    beforeEach(() => {
+      registry.registerTool(new TestTool());
+      registry.registerTool(new DestructiveTestTool());
+    });
+
+    it('should return false for non-destructive tool', () => {
+      const context = {
+        session: {
+          context: {
+            requireConfirmation: [],
+          },
+        },
+      } as any;
+
+      expect(registry.requiresConfirmation('test_tool', context)).toBe(false);
+    });
+
+    it('should return true for destructive tool', () => {
+      const context = {
+        session: {
+          context: {
+            requireConfirmation: [],
+          },
+        },
+      } as any;
+
+      expect(registry.requiresConfirmation('destructive_tool', context)).toBe(true);
+    });
+  });
+
+  describe('getAllTools', () => {
+    it('should return all registered tools', () => {
+      const tool1 = new TestTool();
+      const tool2 = new DestructiveTestTool();
+
+      registry.registerTool(tool1);
+      registry.registerTool(tool2);
+
+      const allTools = registry.getAllTools();
+      expect(allTools).toHaveLength(2);
+      expect(allTools).toContain(tool1);
+      expect(allTools).toContain(tool2);
+    });
+
+    it('should return empty array when no tools registered', () => {
+      const allTools = registry.getAllTools();
+      expect(allTools).toHaveLength(0);
+    });
+  });
 });

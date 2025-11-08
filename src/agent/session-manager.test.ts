@@ -1,353 +1,346 @@
-import { SessionManager } from './session-manager';
-import { SessionType } from '../types/agent';
-
 // Import the mocked TFile class
 import { TFile } from 'obsidian';
+import { SessionType } from '../types/agent';
+import { SessionManager } from './session-manager';
 
 // Mock plugin
 const mockPlugin = {
-	app: {
-		vault: {
-			getAbstractFileByPath: jest.fn(),
-			createFolder: jest.fn(),
-			read: jest.fn()
-		},
-		metadataCache: {
-			getFileCache: jest.fn()
-		}
-	},
-	settings: {
-		historyFolder: 'gemini-scribe'
-	}
+  app: {
+    vault: {
+      getAbstractFileByPath: jest.fn(),
+      createFolder: jest.fn(),
+      read: jest.fn(),
+    },
+    metadataCache: {
+      getFileCache: jest.fn(),
+    },
+  },
+  settings: {
+    historyFolder: 'gemini-scribe',
+  },
 } as any;
 
 // Mock TFile using actual mock class constructor
 const mockFile = new TFile();
 (mockFile as any).basename = 'test';
 (mockFile as any).stat = {
-	ctime: Date.now(),
-	mtime: Date.now()
+  ctime: Date.now(),
+  mtime: Date.now(),
 };
 
 describe('SessionManager', () => {
-	let sessionManager: SessionManager;
+  let sessionManager: SessionManager;
 
-	beforeEach(() => {
-		sessionManager = new SessionManager(mockPlugin);
-		jest.clearAllMocks();
-	});
+  beforeEach(() => {
+    sessionManager = new SessionManager(mockPlugin);
+    jest.clearAllMocks();
+  });
 
-	describe('createAgentSession', () => {
-		it('should sanitize file names with forbidden characters', async () => {
-			const session = await sessionManager.createAgentSession('Agent: Test Mode');
-			
-			// Should replace colon with dash
-			expect(session.title).toBe('Agent- Test Mode');
-			expect(session.historyPath).toContain('Agent- Test Mode.md');
-		});
+  describe('createAgentSession', () => {
+    it('should sanitize file names with forbidden characters', async () => {
+      const session = await sessionManager.createAgentSession('Agent: Test Mode');
 
-		it('should handle various forbidden characters', async () => {
-			const session = await sessionManager.createAgentSession('Test\\File/Name:With*Forbidden?Chars"<>|');
-			
-			// Should replace all forbidden characters with dashes
-			expect(session.title).toBe('Test-File-Name-With-Forbidden-Chars----');
-		});
+      // Should replace colon with dash
+      expect(session.title).toBe('Agent- Test Mode');
+      expect(session.historyPath).toContain('Agent- Test Mode.md');
+    });
 
-		it('should limit file name length', async () => {
-			const longTitle = 'A'.repeat(150);
-			const session = await sessionManager.createAgentSession(longTitle);
-			
-			// Should be limited to 100 characters
-			expect(session.title.length).toBeLessThanOrEqual(100);
-		});
+    it('should handle various forbidden characters', async () => {
+      const session = await sessionManager.createAgentSession('Test\\File/Name:With*Forbidden?Chars"<>|');
 
-		it('should normalize whitespace', async () => {
-			const session = await sessionManager.createAgentSession('  Test   Multiple   Spaces  ');
-			
-			// Should normalize multiple spaces to single spaces and trim
-			expect(session.title).toBe('Test Multiple Spaces');
-		});
+      // Should replace all forbidden characters with dashes
+      expect(session.title).toBe('Test-File-Name-With-Forbidden-Chars----');
+    });
 
-		it('should create default title when none provided', async () => {
-			const session = await sessionManager.createAgentSession();
-			
-			// Should create a default title with current date
-			expect(session.title).toMatch(/Agent Session/);
-			expect(session.type).toBe(SessionType.AGENT_SESSION);
-		});
-	});
+    it('should limit file name length', async () => {
+      const longTitle = 'A'.repeat(150);
+      const session = await sessionManager.createAgentSession(longTitle);
 
-	describe('createNoteChatSession', () => {
-		it('should sanitize note chat session titles', async () => {
-			const fileWithSpecialChars = {
-				...mockFile,
-				basename: 'Test:File*Name'
-			};
+      // Should be limited to 100 characters
+      expect(session.title.length).toBeLessThanOrEqual(100);
+    });
 
-			const session = await sessionManager.createNoteChatSession(fileWithSpecialChars);
-			
-			// Should sanitize the basename in the title
-			expect(session.title).toBe('Test-File-Name Chat');
-			expect(session.historyPath).toContain('Test-File-Name Chat.md');
-		});
+    it('should normalize whitespace', async () => {
+      const session = await sessionManager.createAgentSession('  Test   Multiple   Spaces  ');
 
-		it('should create note chat session with proper type', async () => {
-			const session = await sessionManager.createNoteChatSession(mockFile);
-			
-			expect(session.type).toBe(SessionType.NOTE_CHAT);
-			expect(session.sourceNotePath).toBe(mockFile.path);
-			expect(session.context.contextFiles).toContain(mockFile);
-		});
+      // Should normalize multiple spaces to single spaces and trim
+      expect(session.title).toBe('Test Multiple Spaces');
+    });
 
-		it('should create agent session with context files', async () => {
-			const contextFiles = [mockFile];
-			const session = await sessionManager.createAgentSession('Test Session', {
-				contextFiles: contextFiles
-			});
-			
-			expect(session.context.contextFiles).toEqual(contextFiles);
-			expect(session.context.contextFiles).toHaveLength(1);
-		});
-	});
+    it('should create default title when none provided', async () => {
+      const session = await sessionManager.createAgentSession();
 
-	describe('getNoteChatSession', () => {
-		it('should use sanitized file name when checking for existing history', async () => {
-			const fileWithSpecialChars = {
-				...mockFile,
-				basename: 'Test:File'
-			};
+      // Should create a default title with current date
+      expect(session.title).toMatch(/Agent Session/);
+      expect(session.type).toBe(SessionType.AGENT_SESSION);
+    });
+  });
 
-			// Mock that no file exists
-			mockPlugin.app.vault.getAbstractFileByPath.mockReturnValue(null);
+  describe('createNoteChatSession', () => {
+    it('should sanitize note chat session titles', async () => {
+      const fileWithSpecialChars = {
+        ...mockFile,
+        basename: 'Test:File*Name',
+      };
 
-			const session = await sessionManager.getNoteChatSession(fileWithSpecialChars);
-			
-			// Should have called getAbstractFileByPath with sanitized name
-			expect(mockPlugin.app.vault.getAbstractFileByPath).toHaveBeenCalledWith(
-				expect.stringContaining('Test-File Chat.md')
-			);
-		});
-	});
+      const session = await sessionManager.createNoteChatSession(fileWithSpecialChars);
 
-	describe('loadSessionFromFile', () => {
-		beforeEach(() => {
-			// Mock metadataCache for link resolution
-			mockPlugin.app.metadataCache = {
-				getFirstLinkpathDest: jest.fn(),
-				getFileCache: jest.fn()
-			};
-		});
+      // Should sanitize the basename in the title
+      expect(session.title).toBe('Test-File-Name Chat');
+      expect(session.historyPath).toContain('Test-File-Name Chat.md');
+    });
 
-		it('should parse wikilink format context files when loading session', async () => {
-			const mockHistoryFile = {
-				path: 'gemini-scribe/Agent-Sessions/test.md',
-				basename: 'test',
-				stat: { ctime: Date.now(), mtime: Date.now() }
-			} as any;
+    it('should create note chat session with proper type', async () => {
+      const session = await sessionManager.createNoteChatSession(mockFile);
 
-			const frontmatter = {
-				session_id: 'test-session',
-				type: 'agent-session',
-				title: 'Test Session',
-				context_files: ['[[Test File]]', '[[Another File]]'],
-				context_depth: 3,
-				enabled_tools: ['read_only'],
-				created: new Date().toISOString(),
-				last_active: new Date().toISOString()
-			};
+      expect(session.type).toBe(SessionType.NOTE_CHAT);
+      expect(session.sourceNotePath).toBe(mockFile.path);
+      expect(session.context.contextFiles).toContain(mockFile);
+    });
 
-			// Mock file reading and metadata
-			mockPlugin.app.vault.read.mockResolvedValue('test content');
-			mockPlugin.app.metadataCache.getFileCache.mockReturnValue({ frontmatter });
-			
-			// Create mock TFile instances for link resolution
-			const mockTFile1 = new TFile();
-			(mockTFile1 as any).basename = 'Test File';
-			const mockTFile2 = new TFile();
-			(mockTFile2 as any).basename = 'Another File';
-			
-			// Mock link resolution - ensure it returns TFile instances
-			mockPlugin.app.metadataCache.getFirstLinkpathDest
-				.mockReturnValueOnce(mockTFile1)
-				.mockReturnValueOnce(mockTFile2);
+    it('should create agent session with context files', async () => {
+      const contextFiles = [mockFile];
+      const session = await sessionManager.createAgentSession('Test Session', {
+        contextFiles: contextFiles,
+      });
 
-			// Call loadSessionFromFile (accessing private method via bracket notation for testing)
-			const session = await (sessionManager as any).loadSessionFromFile(mockHistoryFile);
-			
-			// Verify that getFirstLinkpathDest was called with the link text
-			expect(mockPlugin.app.metadataCache.getFirstLinkpathDest)
-				.toHaveBeenCalledWith('Test File', '');
-			expect(mockPlugin.app.metadataCache.getFirstLinkpathDest)
-				.toHaveBeenCalledWith('Another File', '');
-			
-			// Verify context files were parsed correctly
-			expect(session.context.contextFiles).toHaveLength(2);
-		});
+      expect(session.context.contextFiles).toEqual(contextFiles);
+      expect(session.context.contextFiles).toHaveLength(1);
+    });
+  });
 
-		it('should handle old path format for backwards compatibility', async () => {
-			const mockHistoryFile = {
-				path: 'gemini-scribe/Agent-Sessions/test.md',
-				basename: 'test',
-				stat: { ctime: Date.now(), mtime: Date.now() }
-			} as any;
+  describe('getNoteChatSession', () => {
+    it('should use sanitized file name when checking for existing history', async () => {
+      const fileWithSpecialChars = {
+        ...mockFile,
+        basename: 'Test:File',
+      };
 
-			const frontmatter = {
-				session_id: 'test-session',
-				type: 'agent-session',
-				title: 'Test Session',
-				context_files: ['path/to/file.md'],
-				context_depth: 2,
-				created: new Date().toISOString(),
-				last_active: new Date().toISOString()
-			};
+      // Mock that no file exists
+      mockPlugin.app.vault.getAbstractFileByPath.mockReturnValue(null);
 
-			// Mock file reading and metadata
-			mockPlugin.app.vault.read.mockResolvedValue('test content');
-			mockPlugin.app.metadataCache.getFileCache.mockReturnValue({ frontmatter });
-			
-			// Create proper TFile instance for old path format
-			const mockFileForPath = new TFile();
-			(mockFileForPath as any).basename = 'file';
-			mockPlugin.app.vault.getAbstractFileByPath.mockReturnValue(mockFileForPath);
+      const _session = await sessionManager.getNoteChatSession(fileWithSpecialChars);
 
-			// Call loadSessionFromFile
-			const session = await (sessionManager as any).loadSessionFromFile(mockHistoryFile);
-			
-			// Should fall back to getAbstractFileByPath for non-wikilink format
-			expect(mockPlugin.app.vault.getAbstractFileByPath)
-				.toHaveBeenCalledWith('path/to/file.md');
-			
-			// Verify context files were parsed correctly
-			expect(session.context.contextFiles).toHaveLength(1);
-		});
-	});
+      // Should have called getAbstractFileByPath with sanitized name
+      expect(mockPlugin.app.vault.getAbstractFileByPath).toHaveBeenCalledWith(
+        expect.stringContaining('Test-File Chat.md')
+      );
+    });
+  });
 
-	describe('getRecentAgentSessions', () => {
-		let mockFolder: any;
-		let mockSessionFiles: TFile[];
+  describe('loadSessionFromFile', () => {
+    beforeEach(() => {
+      // Mock metadataCache for link resolution
+      mockPlugin.app.metadataCache = {
+        getFirstLinkpathDest: jest.fn(),
+        getFileCache: jest.fn(),
+      };
+    });
 
-		// Helper to create a mock session from a TFile
-		const createMockSession = (file: TFile) => ({
-			id: file.basename,
-			title: `${file.basename} Session`,
-			type: SessionType.AGENT_SESSION,
-			historyPath: file.path,
-			created: new Date(file.stat.ctime),
-			lastActive: new Date(file.stat.mtime),
-			context: {}
-		});
+    it('should parse wikilink format context files when loading session', async () => {
+      const mockHistoryFile = {
+        path: 'gemini-scribe/Agent-Sessions/test.md',
+        basename: 'test',
+        stat: { ctime: Date.now(), mtime: Date.now() },
+      } as any;
 
-		beforeEach(() => {
-			// Create mock session files with different modification times
-			const now = Date.now();
+      const frontmatter = {
+        session_id: 'test-session',
+        type: 'agent-session',
+        title: 'Test Session',
+        context_files: ['[[Test File]]', '[[Another File]]'],
+        context_depth: 3,
+        enabled_tools: ['read_only'],
+        created: new Date().toISOString(),
+        last_active: new Date().toISOString(),
+      };
 
-			mockSessionFiles = [
-				Object.assign(new TFile(), {
-					path: 'gemini-scribe/Agent-Sessions/session1.md',
-					basename: 'session1',
-					extension: 'md',
-					stat: { ctime: now - 3000, mtime: now - 3000 }
-				}),
-				Object.assign(new TFile(), {
-					path: 'gemini-scribe/Agent-Sessions/session2.md',
-					basename: 'session2',
-					extension: 'md',
-					stat: { ctime: now - 1000, mtime: now - 1000 }
-				}),
-				Object.assign(new TFile(), {
-					path: 'gemini-scribe/Agent-Sessions/session3.md',
-					basename: 'session3',
-					extension: 'md',
-					stat: { ctime: now - 2000, mtime: now - 2000 }
-				})
-			];
+      // Mock file reading and metadata
+      mockPlugin.app.vault.read.mockResolvedValue('test content');
+      mockPlugin.app.metadataCache.getFileCache.mockReturnValue({ frontmatter });
 
-			mockFolder = {
-				children: mockSessionFiles,
-				path: 'gemini-scribe/Agent-Sessions',
-				name: 'Agent-Sessions'
-			};
+      // Create mock TFile instances for link resolution
+      const mockTFile1 = new TFile();
+      (mockTFile1 as any).basename = 'Test File';
+      const mockTFile2 = new TFile();
+      (mockTFile2 as any).basename = 'Another File';
 
-			// Mock getOrCreateAgentSessionsFolder to return our mock folder
-			jest.spyOn(sessionManager as any, 'getOrCreateAgentSessionsFolder')
-				.mockResolvedValue(mockFolder);
+      // Mock link resolution - ensure it returns TFile instances
+      mockPlugin.app.metadataCache.getFirstLinkpathDest.mockReturnValueOnce(mockTFile1).mockReturnValueOnce(mockTFile2);
 
-			// Mock loadSessionFromFile to return mock sessions
-			jest.spyOn(sessionManager as any, 'loadSessionFromFile')
-				.mockImplementation(async (file: TFile) => createMockSession(file));
-		});
+      // Call loadSessionFromFile (accessing private method via bracket notation for testing)
+      const session = await (sessionManager as any).loadSessionFromFile(mockHistoryFile);
 
-		it('should return sessions sorted by most recent', async () => {
-			const sessions = await sessionManager.getRecentAgentSessions();
+      // Verify that getFirstLinkpathDest was called with the link text
+      expect(mockPlugin.app.metadataCache.getFirstLinkpathDest).toHaveBeenCalledWith('Test File', '');
+      expect(mockPlugin.app.metadataCache.getFirstLinkpathDest).toHaveBeenCalledWith('Another File', '');
 
-			// Should be sorted by mtime descending (newest first)
-			expect(sessions).toHaveLength(3);
-			expect(sessions[0].id).toBe('session2'); // Most recent (now - 1000)
-			expect(sessions[1].id).toBe('session3'); // Middle (now - 2000)
-			expect(sessions[2].id).toBe('session1'); // Oldest (now - 3000)
-		});
+      // Verify context files were parsed correctly
+      expect(session.context.contextFiles).toHaveLength(2);
+    });
 
-		it('should respect the limit parameter', async () => {
-			const sessions = await sessionManager.getRecentAgentSessions(2);
+    it('should handle old path format for backwards compatibility', async () => {
+      const mockHistoryFile = {
+        path: 'gemini-scribe/Agent-Sessions/test.md',
+        basename: 'test',
+        stat: { ctime: Date.now(), mtime: Date.now() },
+      } as any;
 
-			// Should only return 2 most recent sessions
-			expect(sessions).toHaveLength(2);
-			expect(sessions[0].id).toBe('session2');
-			expect(sessions[1].id).toBe('session3');
-		});
+      const frontmatter = {
+        session_id: 'test-session',
+        type: 'agent-session',
+        title: 'Test Session',
+        context_files: ['path/to/file.md'],
+        context_depth: 2,
+        created: new Date().toISOString(),
+        last_active: new Date().toISOString(),
+      };
 
-		it('should filter out non-markdown files', async () => {
-			// Add a non-markdown file to the folder
-			const nonMdFile = Object.assign(new TFile(), {
-				path: 'gemini-scribe/Agent-Sessions/note.txt',
-				basename: 'note',
-				extension: 'txt',
-				stat: { ctime: Date.now(), mtime: Date.now() }
-			});
-			mockFolder.children = [...mockSessionFiles, nonMdFile];
+      // Mock file reading and metadata
+      mockPlugin.app.vault.read.mockResolvedValue('test content');
+      mockPlugin.app.metadataCache.getFileCache.mockReturnValue({ frontmatter });
 
-			const sessions = await sessionManager.getRecentAgentSessions();
+      // Create proper TFile instance for old path format
+      const mockFileForPath = new TFile();
+      (mockFileForPath as any).basename = 'file';
+      mockPlugin.app.vault.getAbstractFileByPath.mockReturnValue(mockFileForPath);
 
-			// Should only include .md files
-			expect(sessions).toHaveLength(3);
-			expect(sessions.every(s => s.id.startsWith('session'))).toBe(true);
-		});
+      // Call loadSessionFromFile
+      const session = await (sessionManager as any).loadSessionFromFile(mockHistoryFile);
 
-		it('should handle errors loading individual sessions gracefully', async () => {
-			// Override mock to throw for one file, reuse createMockSession for others
-			jest.spyOn(sessionManager as any, 'loadSessionFromFile')
-				.mockImplementation(async (file: TFile) => {
-					if (file.basename === 'session2') {
-						throw new Error('Failed to load session');
-					}
-					return createMockSession(file);
-				});
+      // Should fall back to getAbstractFileByPath for non-wikilink format
+      expect(mockPlugin.app.vault.getAbstractFileByPath).toHaveBeenCalledWith('path/to/file.md');
 
-			const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+      // Verify context files were parsed correctly
+      expect(session.context.contextFiles).toHaveLength(1);
+    });
+  });
 
-			const sessions = await sessionManager.getRecentAgentSessions();
+  describe('getRecentAgentSessions', () => {
+    let mockFolder: any;
+    let mockSessionFiles: TFile[];
 
-			// Should return the 2 sessions that loaded successfully
-			expect(sessions).toHaveLength(2);
-			expect(sessions[0].id).toBe('session3');
-			expect(sessions[1].id).toBe('session1');
+    // Helper to create a mock session from a TFile
+    const createMockSession = (file: TFile) => ({
+      id: file.basename,
+      title: `${file.basename} Session`,
+      type: SessionType.AGENT_SESSION,
+      historyPath: file.path,
+      created: new Date(file.stat.ctime),
+      lastActive: new Date(file.stat.mtime),
+      context: {},
+    });
 
-			// Should have logged a warning
-			expect(consoleSpy).toHaveBeenCalledWith(
-				expect.stringContaining('Failed to load agent session'),
-				expect.any(Error)
-			);
+    beforeEach(() => {
+      // Create mock session files with different modification times
+      const now = Date.now();
 
-			consoleSpy.mockRestore();
-		});
+      mockSessionFiles = [
+        Object.assign(new TFile(), {
+          path: 'gemini-scribe/Agent-Sessions/session1.md',
+          basename: 'session1',
+          extension: 'md',
+          stat: { ctime: now - 3000, mtime: now - 3000 },
+        }),
+        Object.assign(new TFile(), {
+          path: 'gemini-scribe/Agent-Sessions/session2.md',
+          basename: 'session2',
+          extension: 'md',
+          stat: { ctime: now - 1000, mtime: now - 1000 },
+        }),
+        Object.assign(new TFile(), {
+          path: 'gemini-scribe/Agent-Sessions/session3.md',
+          basename: 'session3',
+          extension: 'md',
+          stat: { ctime: now - 2000, mtime: now - 2000 },
+        }),
+      ];
 
-		it('should return empty array when no sessions exist', async () => {
-			mockFolder.children = [];
+      mockFolder = {
+        children: mockSessionFiles,
+        path: 'gemini-scribe/Agent-Sessions',
+        name: 'Agent-Sessions',
+      };
 
-			const sessions = await sessionManager.getRecentAgentSessions();
+      // Mock getOrCreateAgentSessionsFolder to return our mock folder
+      jest.spyOn(sessionManager as any, 'getOrCreateAgentSessionsFolder').mockResolvedValue(mockFolder);
 
-			expect(sessions).toHaveLength(0);
-			expect(sessions).toEqual([]);
-		});
-	});
+      // Mock loadSessionFromFile to return mock sessions
+      jest
+        .spyOn(sessionManager as any, 'loadSessionFromFile')
+        .mockImplementation((async (file: TFile) => createMockSession(file)) as any);
+    });
+
+    it('should return sessions sorted by most recent', async () => {
+      const sessions = await sessionManager.getRecentAgentSessions();
+
+      // Should be sorted by mtime descending (newest first)
+      expect(sessions).toHaveLength(3);
+      expect(sessions[0].id).toBe('session2'); // Most recent (now - 1000)
+      expect(sessions[1].id).toBe('session3'); // Middle (now - 2000)
+      expect(sessions[2].id).toBe('session1'); // Oldest (now - 3000)
+    });
+
+    it('should respect the limit parameter', async () => {
+      const sessions = await sessionManager.getRecentAgentSessions(2);
+
+      // Should only return 2 most recent sessions
+      expect(sessions).toHaveLength(2);
+      expect(sessions[0].id).toBe('session2');
+      expect(sessions[1].id).toBe('session3');
+    });
+
+    it('should filter out non-markdown files', async () => {
+      // Add a non-markdown file to the folder
+      const nonMdFile = Object.assign(new TFile(), {
+        path: 'gemini-scribe/Agent-Sessions/note.txt',
+        basename: 'note',
+        extension: 'txt',
+        stat: { ctime: Date.now(), mtime: Date.now() },
+      });
+      mockFolder.children = [...mockSessionFiles, nonMdFile];
+
+      const sessions = await sessionManager.getRecentAgentSessions();
+
+      // Should only include .md files
+      expect(sessions).toHaveLength(3);
+      expect(sessions.every((s) => s.id.startsWith('session'))).toBe(true);
+    });
+
+    it('should handle errors loading individual sessions gracefully', async () => {
+      // Override mock to throw for one file, reuse createMockSession for others
+      jest.spyOn(sessionManager as any, 'loadSessionFromFile').mockImplementation((async (file: TFile) => {
+        if (file.basename === 'session2') {
+          throw new Error('Failed to load session');
+        }
+        return createMockSession(file);
+      }) as any);
+
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      const sessions = await sessionManager.getRecentAgentSessions();
+
+      // Should return the 2 sessions that loaded successfully
+      expect(sessions).toHaveLength(2);
+      expect(sessions[0].id).toBe('session3');
+      expect(sessions[1].id).toBe('session1');
+
+      // Should have logged a warning
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to load agent session'),
+        expect.any(Error)
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should return empty array when no sessions exist', async () => {
+      mockFolder.children = [];
+
+      const sessions = await sessionManager.getRecentAgentSessions();
+
+      expect(sessions).toHaveLength(0);
+      expect(sessions).toEqual([]);
+    });
+  });
 });

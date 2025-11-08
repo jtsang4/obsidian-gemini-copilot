@@ -2,7 +2,42 @@
  * Common interfaces for model API implementations
  */
 
-import { CustomPrompt } from '../../prompts/types';
+import type { CustomPrompt } from '../../prompts/types';
+
+// Conversation entry types for history
+interface ConversationEntry {
+  role: 'user' | 'model';
+  parts: Array<{ text: string }>;
+}
+
+interface ConversationEntryWithText {
+  role: 'user' | 'model';
+  text: string;
+}
+
+interface ConversationEntryWithMessage {
+  role: 'user' | 'model';
+  message: string;
+}
+
+type ConversationHistoryEntry = ConversationEntry | ConversationEntryWithText | ConversationEntryWithMessage;
+
+// Tool argument type
+type ToolArgumentValue = string | number | boolean | null | undefined | ToolArgumentObject | ToolArgumentArray;
+interface ToolArgumentObject {
+  [key: string]: ToolArgumentValue;
+}
+interface ToolArgumentArray extends Array<ToolArgumentValue> {}
+
+// Tool parameter property types
+interface ToolParameterProperty {
+  type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+  description?: string;
+  enum?: string[];
+  items?: ToolParameterProperty;
+  properties?: Record<string, ToolParameterProperty>;
+  required?: string[];
+}
 
 /**
  * Represents a response from a model.
@@ -12,17 +47,17 @@ import { CustomPrompt } from '../../prompts/types';
  * @property toolCalls - Optional array of tool/function calls requested by the model
  */
 export interface ModelResponse {
-	markdown: string;
-	rendered: string;
-	toolCalls?: ToolCall[];
+  markdown: string;
+  rendered: string;
+  toolCalls?: ToolCall[];
 }
 
 /**
  * Represents a tool call requested by the model
  */
 export interface ToolCall {
-	name: string;
-	arguments: Record<string, any>;
+  name: string;
+  arguments: Record<string, ToolArgumentValue>;
 }
 
 /**
@@ -32,10 +67,10 @@ export interface ToolCall {
  * @property prompt - The prompt or input text for the model. Should be fully processed.
  */
 export interface BaseModelRequest {
-	model?: string;
-	prompt: string;
-	temperature?: number;
-	topP?: number;
+  model?: string;
+  prompt: string;
+  temperature?: number;
+  topP?: number;
 }
 
 /**
@@ -50,24 +85,24 @@ export interface BaseModelRequest {
  * @property availableTools - Optional array of tool definitions for function calling
  */
 export interface ExtendedModelRequest extends BaseModelRequest {
-	conversationHistory: any[];
-	userMessage: string;
-	renderContent?: boolean;
-	customPrompt?: CustomPrompt;
-	availableTools?: ToolDefinition[];
+  conversationHistory: ConversationHistoryEntry[];
+  userMessage: string;
+  renderContent?: boolean;
+  customPrompt?: CustomPrompt;
+  availableTools?: ToolDefinition[];
 }
 
 /**
  * Represents a tool definition for function calling
  */
 export interface ToolDefinition {
-	name: string;
-	description: string;
-	parameters: {
-		type: 'object';
-		properties: Record<string, any>;
-		required?: string[];
-	};
+  name: string;
+  description: string;
+  parameters: {
+    type: 'object';
+    properties: Record<string, ToolParameterProperty>;
+    required?: string[];
+  };
 }
 
 /**
@@ -84,36 +119,36 @@ export type StreamCallback = (chunk: string) => void;
  * @property cancel - Function to cancel the stream
  */
 export interface StreamingModelResponse {
-	complete: Promise<ModelResponse>;
-	cancel: () => void;
+  complete: Promise<ModelResponse>;
+  cancel: () => void;
 }
 
 /**
  * Interface for model API implementations
  */
 export interface ModelApi {
-	/**
-	 * Generate a response from a model
-	 *
-	 * @param request - Either a BaseModelRequest or ExtendedModelRequest
-	 * @returns A promise resolving to a ModelResponse
-	 */
-	generateModelResponse(request: BaseModelRequest | ExtendedModelRequest): Promise<ModelResponse>;
+  /**
+   * Generate a response from a model
+   *
+   * @param request - Either a BaseModelRequest or ExtendedModelRequest
+   * @returns A promise resolving to a ModelResponse
+   */
+  generateModelResponse(request: BaseModelRequest | ExtendedModelRequest): Promise<ModelResponse>;
 
-	/**
-	 * Generate a streaming response from a model
-	 *
-	 * @param request - Either a BaseModelRequest or ExtendedModelRequest
-	 * @param onChunk - Callback function called for each text chunk
-	 * @returns A StreamingModelResponse with completion promise and cancel function
-	 *
-	 * @remarks
-	 * Implementations that don't support streaming should fall back to
-	 * non-streaming behavior by calling generateModelResponse and
-	 * emitting the full response as a single chunk.
-	 */
-	generateStreamingResponse?(
-		request: BaseModelRequest | ExtendedModelRequest,
-		onChunk: StreamCallback
-	): StreamingModelResponse;
+  /**
+   * Generate a streaming response from a model
+   *
+   * @param request - Either a BaseModelRequest or ExtendedModelRequest
+   * @param onChunk - Callback function called for each text chunk
+   * @returns A StreamingModelResponse with completion promise and cancel function
+   *
+   * @remarks
+   * Implementations that don't support streaming should fall back to
+   * non-streaming behavior by calling generateModelResponse and
+   * emitting the full response as a single chunk.
+   */
+  generateStreamingResponse?(
+    request: BaseModelRequest | ExtendedModelRequest,
+    onChunk: StreamCallback
+  ): StreamingModelResponse;
 }

@@ -2,12 +2,12 @@
  * Configuration for a specific model
  */
 export interface ModelConfig {
-	apiKey: string;
-	model: string;
-	temperature: number;
-	topP: number;
-	maxOutputTokens?: number;
-	topK?: number;
+  apiKey: string;
+  model: string;
+  temperature: number;
+  topP: number;
+  maxOutputTokens?: number;
+  topK?: number;
 }
 
 /**
@@ -16,16 +16,16 @@ export interface ModelConfig {
  * @deprecated No longer used with js-genai SDK
  */
 export interface RetryConfig {
-	maxRetries: number;
-	initialBackoffDelay: number;
+  maxRetries: number;
+  initialBackoffDelay: number;
 }
 
 /**
  * Feature flags for API behavior
  */
 export interface ApiFeatures {
-	searchGrounding: boolean;
-	streamingEnabled: boolean;
+  searchGrounding: boolean;
+  streamingEnabled: boolean;
 }
 
 /**
@@ -34,16 +34,16 @@ export interface ApiFeatures {
  * @deprecated Use GeminiClientConfig instead
  */
 export interface ApiConfig {
-	modelConfig: ModelConfig;
-	retryConfig?: RetryConfig;
-	features?: ApiFeatures;
+  modelConfig: ModelConfig;
+  retryConfig?: RetryConfig;
+  features?: ApiFeatures;
 }
 
 /**
  * Session-specific model configuration overrides
  */
 export interface SessionModelConfig {
-	model?: string;
-	temperature?: number;
-	topP?: number;
+  model?: string;
+  temperature?: number;
+  topP?: number;
 }

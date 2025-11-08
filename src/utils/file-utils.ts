@@ -6,7 +6,7 @@
  * - Agent vault tools (read_file, write_file, list_files, etc.)
  */
 
-import { TAbstractFile } from 'obsidian';
+import type { TAbstractFile } from 'obsidian';
 import type ObsidianGemini from '../main';
 
 /**
@@ -20,17 +20,17 @@ import type ObsidianGemini from '../main';
  * @returns true if the path should be excluded, false otherwise
  */
 export function shouldExcludePath(path: string, excludeFolder?: string): boolean {
-	// Check if path is within .obsidian folder
-	if (path === '.obsidian' || path.startsWith('.obsidian/')) {
-		return true;
-	}
+  // Check if path is within .obsidian folder
+  if (path === '.obsidian' || path.startsWith('.obsidian/')) {
+    return true;
+  }
 
-	// Check if path is within the exclude folder
-	if (excludeFolder && (path === excludeFolder || path.startsWith(excludeFolder + '/'))) {
-		return true;
-	}
+  // Check if path is within the exclude folder
+  if (excludeFolder && (path === excludeFolder || path.startsWith(`${excludeFolder}/`))) {
+    return true;
+  }
 
-	return false;
+  return false;
 }
 
 /**
@@ -42,7 +42,7 @@ export function shouldExcludePath(path: string, excludeFolder?: string): boolean
  * @returns true if the path should be excluded, false otherwise
  */
 export function shouldExcludePathForPlugin(path: string, plugin: InstanceType<typeof ObsidianGemini>): boolean {
-	return shouldExcludePath(path, plugin.settings.historyFolder);
+  return shouldExcludePath(path, plugin.settings.historyFolder);
 }
 
 /**
@@ -53,5 +53,5 @@ export function shouldExcludePathForPlugin(path: string, plugin: InstanceType<ty
  * @returns Filter function that returns true for items that should be included
  */
 export function createFileFilter(excludeFolder?: string): (item: TAbstractFile) => boolean {
-	return (item: TAbstractFile) => !shouldExcludePath(item.path, excludeFolder);
+  return (item: TAbstractFile) => !shouldExcludePath(item.path, excludeFolder);
 }
